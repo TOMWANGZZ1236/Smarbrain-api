@@ -1,31 +1,20 @@
 const express = require('express');
 const bcrypt = require('bcrypt-nodejs');
 const cors = require('cors');
+const postgres = require('knex')({
+    client: 'pg',
+    connection: {
+      host: '127.0.0.1',
+      port: 5432,
+      user: '',
+      password: '',
+      database: 'tomwangm',
+    },
+  });
 
 const app = express();
 app.use(express.json()); //parsing the incoming json data
 app.use(cors());
-
-let database = {
-    users : [
-        {
-            id : 123,
-            name : "Tom",
-            email : 'tomwang@gmail.com',
-            password : "1234",
-            entries : 0,
-            joined : new Date(),
-        },
-        {
-            id : 124,
-            name : "Kevin",
-            email : 'Kevin@gmail.com',
-            password : "12345",
-            entries : 0,
-            joined : new Date(),
-        }
-    ]
-}
 
 
 app.get('/', (req, res) => {
@@ -33,61 +22,82 @@ app.get('/', (req, res) => {
 })
 
 app.post('/signin', (req, res) => {
-    const email = req.body.email;
-    const password = req.body.password;
-    let found = false;
-    database.users.forEach((item, index) => {
-        if (item.password === password && item.email === email) {
-            res.json('success');
-            found =  true;
+    postgres.select("email", "hash").from('login')
+    .where('email' , req.body.email)
+    .then((data) => {
+        const isValid = bcrypt.compareSync(req.body.password, data[0].hash);
+        console.log(isValid);
+        if (isValid) {
+            return postgres.select('*').from('users')
+            .where('email', req.body.email)
+            .then((users) => {
+                res.json(users[0]);
+            }) 
+            .catch(() => res.status(400).json("Unable the get the User"))
+        } else {
+            res.status(400).json("Wrong credentials");
         }
-    });
-    if (!found) {
-        res.status(400).json('Error logging in');
-    }
+
+    })
+    .catch(() => res.status(400).json("Wrong credentials"))
+
 })
 
 app.post('/register', (req, res) => {
     const {name, email, password} = req.body;
-    database.users.push({
-        id : 125,
-        name : "Jason",
-        email : 'Jason@gmail.com',
-        password : "1234",
-        entries : 0,
-        joined : new Date(),
-    },)
-    res.json('Successfully registered')
+    const hash = bcrypt.hashSync(password);
+    postgres.transaction((trx) => 
+        trx('login')
+        .returning('id')
+        .insert({hash: hash, email: email})
+        .then(id => {
+            console.log(id);
+            trx('users')
+            .returning('*')
+            .insert({name : name, email: email, joined: new Date()})
+            .then(user => res.json(user[0]))
+        })
+    )
+    .catch(() => res.status(400).json("Unable to register, user exists alraedy"))
+
 })
 
 app.get('/profile/:id', (req, res) => {
     const {id} = req.params; 
-    database.users.forEach((user, index) => {
-        if (user.id === id) {
-            res.json('User found');
-            found =  true;
+    postgres
+    .select('*')
+    .from('users')
+    .where('id', id)
+    .then((user) => {
+        if (user.length) {
+            res.json(user[0])
+        } else {
+            res.status(400).json("Error getting user")
         }
     })
-    if (!found) {
-        res.status(404).json('User not found')
-    }
+    .catch(() => res.status(404).json("Can't find user"))
 
 })
 
 app.put('/image', (req, res) => {
-    const {id} = req.params; 
-    database.users.forEach((user, index) => {
-        if (user.id === id) {
-            user.entries ++;
-            res.json(user.entries);
-            found =  true;
-        }
+    const {id} = req.body; 
+    postgres('users').where('id', '=', id)
+    .returning('entries')
+    .increment(
+        {'entries' : 1}
+    )
+    .then((data)=> {
+        res.json(data[0].entries);
     })
-    if (!found) {
-        res.status(404).json('User not found')
-    }
+    
 })
 
 app.listen(3001, () => {
     console.log('app is listening on port 3001');
 })
+
+
+
+
+
+

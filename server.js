@@ -47,7 +47,7 @@ app.put('/courseUpdate', (req, res) => course.handleCourseUpdate(req, res, postg
 app.put('/imageSubmission', (req, res) => image.handleImageSubmission(req, res, postgres));
 
 app.listen(process.env.PORT || 3000, () => {
-    console.log(`app is listening on port 3001 ${process.env.PORT}`);
+    console.log(`app is listening on ${process.env.PORT}`);
 })
 
 

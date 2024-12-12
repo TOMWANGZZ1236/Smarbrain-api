@@ -9,7 +9,7 @@ const handleRegister = (req, res, postgres, bcrypt) => {
         .returning('id')
         .insert({hash: hash, email: email})
         .then(id => {
-            console.log(id);
+            // console.log(id);
             trx('users')
             .returning('*')
             .insert({name : name, email: email, joined: new Date()})

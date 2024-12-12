@@ -15,10 +15,11 @@ const register = require('./controllers/register');
 const signin = require('./controllers/signin');
 const profile = require('./controllers/profile');
 const image = require('./controllers/image');
+const course = require('./controllers/course');
 
   
 const app = express();
-app.use(express.json()); //parsing the incoming json data
+app.use(express.json({ extended: true, parameterLimit:50000, limit: '200mb' })); //parsing the incoming json data
 app.use(cors());
 
 
@@ -35,7 +36,15 @@ app.post('/register', (req, res) => register.handleRegister(req, res, postgres, 
 
 app.get('/profile/:id', (req, res) => profile.handleProfileGet(req, res, postgres))
 
-app.put('/image', (req, res) => image.handleImage(req, res, postgres));
+app.post('/courseDisplay', (req, res) => course.handleCourseDisplay(req, res, postgres))
+
+app.post('/courseCreate', (req, res) => course.handleCourseCreate(req, res, postgres))
+
+app.delete('/courseDelete', (req, res) => course.handleCourseDelete(req, res, postgres))
+
+app.put('/courseUpdate', (req, res) => course.handleCourseUpdate(req, res, postgres))
+
+app.put('/imageSubmission', (req, res) => image.handleImageSubmission(req, res, postgres));
 
 app.listen(3001, () => {
     console.log('app is listening on port 3001');
